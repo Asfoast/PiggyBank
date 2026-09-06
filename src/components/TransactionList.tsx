@@ -131,14 +131,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         </div>
 
         {/* Filter bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 pt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
           {/* Search input */}
-          <div className="relative sm:col-span-1">
+          <div className="relative col-span-2 sm:col-span-1">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               id="search-transactions"
               type="text"
-              placeholder="Rechercher libellé..."
+              placeholder="Rechercher..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
@@ -180,7 +180,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           </div>
 
           {/* Categorie filter */}
-          <div>
+          <div className="col-span-2 sm:col-span-1">
             <select
               id="filter-categorie"
               value={selectedCategorie}
@@ -199,7 +199,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       </div>
 
       {/* Transactions List */}
-      <div className="overflow-x-auto">
+      <div>
         {filteredTransactions.length === 0 ? (
           <div className="py-12 text-center">
             <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -209,81 +209,153 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             </p>
           </div>
         ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/60 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Description</th>
-                <th className="py-3 px-4">Catégorie</th>
-                <th className="py-3 px-4">Compte</th>
-                <th className="py-3 px-4 text-right">Montant</th>
-                <th className="py-3 px-4 text-center w-12">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs">
+          <>
+            {/* Mobile Native Card List (< 640px) */}
+            <div className="sm:hidden divide-y divide-slate-100">
               {filteredTransactions.map((tx) => {
                 const isPositive = tx.montant >= 0;
                 return (
-                  <tr
+                  <div
                     key={tx.id}
-                    id={`tx-row-${tx.id}`}
-                    className="hover:bg-slate-50/80 transition-colors group"
+                    id={`tx-mob-${tx.id}`}
+                    className="p-3.5 flex items-center justify-between gap-3 active:bg-slate-50 transition-colors"
                   >
-                    {/* Date */}
-                    <td className="py-3 px-4 whitespace-nowrap text-slate-600 font-medium">
-                      {tx.date}
-                    </td>
-
-                    {/* Description */}
-                    <td className="py-3 px-4 text-slate-900 font-medium max-w-xs truncate">
-                      {tx.description}
-                    </td>
-
-                    {/* Categorie */}
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${getCategoryBadgeClass(
-                          tx.categorie
-                        )}`}
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                          isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'
+                        }`}
                       >
-                        {tx.categorie}
-                      </span>
-                    </td>
+                        {isPositive ? (
+                          <ArrowUpRight className="w-4 h-4" />
+                        ) : (
+                          <ArrowDownLeft className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900 truncate">
+                          {tx.description}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                          <span>{tx.date}</span>
+                          <span>•</span>
+                          <span className="truncate max-w-[90px]">{tx.compte}</span>
+                          <span>•</span>
+                          <span
+                            className={`px-1.5 py-0.2 rounded-md font-medium border text-[9px] ${getCategoryBadgeClass(
+                              tx.categorie
+                            )}`}
+                          >
+                            {tx.categorie}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-                    {/* Compte */}
-                    <td className="py-3 px-4 whitespace-nowrap text-slate-500">
-                      <span className="inline-flex items-center text-slate-600 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-                        <CreditCard className="w-3 h-3 mr-1 text-slate-400" />
-                        {tx.compte}
-                      </span>
-                    </td>
-
-                    {/* Montant */}
-                    <td className="py-3 px-4 text-right whitespace-nowrap font-semibold">
-                      <span className={isPositive ? 'text-emerald-600' : 'text-slate-900'}>
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <span
+                        className={`text-xs font-extrabold tracking-tight ${
+                          isPositive ? 'text-emerald-600' : 'text-slate-900'
+                        }`}
+                      >
                         {isPositive ? `+${formatEuro(tx.montant)}` : formatEuro(tx.montant)}
                       </span>
-                    </td>
-
-                    {/* Delete action */}
-                    <td className="py-3 px-4 text-center">
                       <button
                         onClick={() => {
                           if (window.confirm(`Supprimer l'opération "${tx.description}" ?`)) {
                             onDeleteTransaction(tx.id);
                           }
                         }}
-                        title="Supprimer cette opération"
-                        className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="p-2 text-slate-300 hover:text-rose-600 active:text-rose-700 transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
+                        title="Supprimer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+
+            {/* Desktop Table View (>= 640px) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/60 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Description</th>
+                    <th className="py-3 px-4">Catégorie</th>
+                    <th className="py-3 px-4">Compte</th>
+                    <th className="py-3 px-4 text-right">Montant</th>
+                    <th className="py-3 px-4 text-center w-12">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {filteredTransactions.map((tx) => {
+                    const isPositive = tx.montant >= 0;
+                    return (
+                      <tr
+                        key={tx.id}
+                        id={`tx-row-${tx.id}`}
+                        className="hover:bg-slate-50/80 transition-colors group"
+                      >
+                        {/* Date */}
+                        <td className="py-3 px-4 whitespace-nowrap text-slate-600 font-medium">
+                          {tx.date}
+                        </td>
+
+                        {/* Description */}
+                        <td className="py-3 px-4 text-slate-900 font-medium max-w-xs truncate">
+                          {tx.description}
+                        </td>
+
+                        {/* Categorie */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${getCategoryBadgeClass(
+                              tx.categorie
+                            )}`}
+                          >
+                            {tx.categorie}
+                          </span>
+                        </td>
+
+                        {/* Compte */}
+                        <td className="py-3 px-4 whitespace-nowrap text-slate-500">
+                          <span className="inline-flex items-center text-slate-600 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                            <CreditCard className="w-3 h-3 mr-1 text-slate-400" />
+                            {tx.compte}
+                          </span>
+                        </td>
+
+                        {/* Montant */}
+                        <td className="py-3 px-4 text-right whitespace-nowrap font-semibold">
+                          <span className={isPositive ? 'text-emerald-600' : 'text-slate-900'}>
+                            {isPositive ? `+${formatEuro(tx.montant)}` : formatEuro(tx.montant)}
+                          </span>
+                        </td>
+
+                        {/* Delete action */}
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Supprimer l'opération "${tx.description}" ?`)) {
+                                onDeleteTransaction(tx.id);
+                              }
+                            }}
+                            title="Supprimer cette opération"
+                            className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

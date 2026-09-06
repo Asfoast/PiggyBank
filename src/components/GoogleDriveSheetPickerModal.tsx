@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
+  Copy,
+  ShieldAlert,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { DriveFile, listDriveSpreadsheets, createBudgetSpreadsheet, loadTransactionsFromSpreadsheet } from '../services/googleDriveSheets';
@@ -49,6 +51,8 @@ export const GoogleDriveSheetPickerModal: React.FC<GoogleDriveSheetPickerModalPr
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
+  const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
+  const [copiedDomain, setCopiedDomain] = useState<boolean>(false);
 
   // Fetch Drive spreadsheets when modal opens or user logs in
   useEffect(() => {
@@ -79,6 +83,7 @@ export const GoogleDriveSheetPickerModal: React.FC<GoogleDriveSheetPickerModalPr
   const handleSignIn = async () => {
     setIsSigningIn(true);
     setStatusMessage(null);
+    setUnauthorizedDomain(null);
     try {
       const result = await googleSignIn();
       if (result) {
@@ -91,13 +96,34 @@ export const GoogleDriveSheetPickerModal: React.FC<GoogleDriveSheetPickerModalPr
       }
     } catch (err: any) {
       console.error('Sign-in error:', err);
-      setStatusMessage({
-        type: 'error',
-        text: `Erreur de connexion : ${err.message || 'Tentative annulée'}`,
-      });
+      const isDomainError =
+        err?.code === 'auth/unauthorized-domain' ||
+        err?.message?.includes('auth/unauthorized-domain') ||
+        err?.message?.includes('unauthorized-domain');
+
+      if (isDomainError) {
+        const currentHost = window.location.hostname;
+        setUnauthorizedDomain(currentHost);
+        setStatusMessage({
+          type: 'error',
+          text: `Domaine non autorisé : « ${currentHost} » doit être ajouté dans Firebase.`,
+        });
+      } else {
+        setStatusMessage({
+          type: 'error',
+          text: `Erreur de connexion : ${err.message || 'Tentative annulée'}`,
+        });
+      }
     } finally {
       setIsSigningIn(false);
     }
+  };
+
+  const handleCopyDomain = () => {
+    if (!unauthorizedDomain) return;
+    navigator.clipboard.writeText(unauthorizedDomain);
+    setCopiedDomain(true);
+    setTimeout(() => setCopiedDomain(false), 2500);
   };
 
   const handleSignOut = async () => {
@@ -184,22 +210,22 @@ export const GoogleDriveSheetPickerModal: React.FC<GoogleDriveSheetPickerModalPr
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-2 sm:p-4">
       <div 
         id="google-drive-sheet-modal"
-        className="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        className="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] sm:max-h-[90vh] shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
-              <FileSpreadsheet className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
                 Compte Google & Google Sheets
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] sm:text-xs text-slate-500">
                 Liaison directe avec votre Google Drive
               </p>
             </div>
@@ -213,7 +239,7 @@ export const GoogleDriveSheetPickerModal: React.FC<GoogleDriveSheetPickerModalPr
         </div>
 
         {/* Modal Content */}
-        <div className="p-6 overflow-y-auto space-y-5 text-xs text-slate-700">
+        <div className="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 text-xs text-slate-700">
           {/* Status Message */}
           {statusMessage && (
             <div
@@ -228,13 +254,91 @@ export const GoogleDriveSheetPickerModal: React.FC<GoogleDriveSheetPickerModalPr
               ) : (
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               )}
-              <div className="text-xs">{statusMessage.text}</div>
+              <div className="text-xs leading-relaxed">{statusMessage.text}</div>
+            </div>
+          )}
+
+          {/* Dedicated Firebase Authorized Domain Helper */}
+          {unauthorizedDomain && (
+            <div className="p-4 bg-amber-50/80 border border-amber-300 rounded-2xl space-y-3 text-amber-950">
+              <div className="flex items-start space-x-2.5">
+                <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-xs sm:text-sm text-amber-900">
+                    Comment autoriser votre domaine dans Firebase ?
+                  </h4>
+                  <p className="text-[11px] sm:text-xs text-amber-800 mt-0.5 leading-relaxed">
+                    Par sécurité, Google Firebase bloque la connexion OAuth depuis les nouveaux domaines (comme votre site Netlify ou mobile) tant qu'ils ne sont pas enregistrés.
+                  </p>
+                </div>
+              </div>
+
+              {/* Hostname Copy Bar */}
+              <div className="bg-white p-2.5 rounded-xl border border-amber-200 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="text-[10px] uppercase font-bold text-amber-700 block">Domaine à autoriser :</span>
+                  <code className="text-xs font-mono font-bold text-slate-800 truncate block">
+                    {unauthorizedDomain}
+                  </code>
+                </div>
+                <button
+                  onClick={handleCopyDomain}
+                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white rounded-lg font-semibold text-xs flex items-center space-x-1.5 shrink-0 transition-colors cursor-pointer"
+                >
+                  {copiedDomain ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Copié !</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copier</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* 3 Step Resolution Guide */}
+              <div className="space-y-1.5 text-[11px] sm:text-xs text-amber-900 bg-amber-100/60 p-3 rounded-xl">
+                <p className="font-bold text-amber-950">Résolution en 30 secondes :</p>
+                <ol className="list-decimal list-inside space-y-1 pl-1">
+                  <li>
+                    Ouvrez la{' '}
+                    <a
+                      href="https://console.firebase.google.com/project/gen-lang-client-0746286348/authentication/settings"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-700 underline font-semibold hover:text-indigo-900 inline-flex items-center"
+                    >
+                      Console Firebase (Paramètres d'authentification)
+                      <ExternalLink className="w-3 h-3 ml-1 inline" />
+                    </a>
+                  </li>
+                  <li>
+                    Descendez à la section <strong>« Domaines autorisés »</strong> et cliquez sur <strong>« Ajouter un domaine »</strong>.
+                  </li>
+                  <li>
+                    Collez <code className="bg-white px-1 py-0.5 rounded border border-amber-200 font-mono font-bold">{unauthorizedDomain}</code> puis validez.
+                  </li>
+                  <li>
+                    Revenez sur cette page et reconnectez-vous !
+                  </li>
+                </ol>
+              </div>
+
+              <div className="pt-1 text-[11px] text-amber-800 flex items-center justify-between border-t border-amber-200">
+                <span>💡 Alternative sans aucune restriction de domaine :</span>
+                <span className="font-semibold text-slate-800">
+                  Google Apps Script Web App (disponible dans les Paramètres ⚙️)
+                </span>
+              </div>
             </div>
           )}
 
           {/* User Auth State */}
           {!user ? (
-            <div className="text-center py-6 px-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
+            <div className="text-center py-5 sm:py-6 px-3 sm:px-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
               <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center mx-auto text-emerald-600">
                 <FileSpreadsheet className="w-6 h-6" />
               </div>
@@ -253,7 +357,7 @@ export const GoogleDriveSheetPickerModal: React.FC<GoogleDriveSheetPickerModalPr
                   id="google-signin-btn"
                   onClick={handleSignIn}
                   disabled={isSigningIn}
-                  className="flex items-center space-x-3 px-5 py-2.5 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold rounded-xl border border-slate-300 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                  className="flex items-center justify-center space-x-3 px-5 py-2.5 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold rounded-xl border border-slate-300 shadow-xs transition-all cursor-pointer disabled:opacity-50 min-h-[44px]"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 48 48">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />

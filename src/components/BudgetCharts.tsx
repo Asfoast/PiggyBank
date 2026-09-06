@@ -85,22 +85,22 @@ export const BudgetCharts: React.FC<BudgetChartsProps> = ({ transactions, select
   }, [periodTransactions]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 sm:gap-6 mb-6 sm:mb-8">
       {/* Category Spending Breakdown */}
-      <div id="chart-categories" className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
+      <div id="chart-categories" className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/90 shadow-2xs">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div>
-            <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center">
-              <Tag className="w-4 h-4 mr-2 text-emerald-600" />
+            <h3 className="font-bold text-slate-900 text-xs sm:text-base flex items-center">
+              <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 text-emerald-600" />
               Répartition des dépenses
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-[11px] sm:text-xs text-slate-500">
               {categorySummaries.length > 0
-                ? `Total dépensé : ${formatEuro(totalPeriodExpenses)}`
+                ? `Total : ${formatEuro(totalPeriodExpenses)}`
                 : 'Aucune dépense sur cette période'}
             </p>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg">
+          <span className="text-[11px] sm:text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg">
             {selectedMonth === 'ALL' ? 'Tout' : selectedMonth}
           </span>
         </div>

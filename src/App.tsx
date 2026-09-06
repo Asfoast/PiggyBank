@@ -359,7 +359,7 @@ export default function App() {
       />
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6">
         {/* Banner notification depending on connection state */}
         {!settings.spreadsheetId && !settings.webAppUrl && (
           <div className="mb-6 p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
@@ -460,23 +460,23 @@ export default function App() {
       </main>
 
       {/* Mobile Sticky Bottom Navigation Bar */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2 flex items-center justify-around">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-2 py-1.5 flex items-center justify-around shadow-lg">
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex flex-col items-center justify-center text-slate-600 hover:text-emerald-600 transition-colors"
+          className="flex flex-col items-center justify-center text-slate-600 active:text-emerald-600 transition-colors min-w-[54px] min-h-[44px] cursor-pointer"
         >
           <BarChart3 className="w-5 h-5" />
-          <span className="text-[10px] font-medium mt-0.5">Budget</span>
+          <span className="text-[10px] font-semibold mt-0.5">Budget</span>
         </button>
 
         <button
           onClick={() => setIsRecurringModalOpen(true)}
-          className="flex flex-col items-center justify-center text-pink-600 hover:text-pink-700 transition-colors relative"
+          className="flex flex-col items-center justify-center text-pink-600 active:text-pink-700 transition-colors relative min-w-[54px] min-h-[44px] cursor-pointer"
         >
           <Repeat className="w-5 h-5" />
           <span className="text-[10px] font-semibold mt-0.5">Abos</span>
           {activeRecurringCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-pink-600 text-white text-[9px] font-bold flex items-center justify-center">
+            <span className="absolute top-1 right-2 w-4 h-4 rounded-full bg-pink-600 text-white text-[9px] font-bold flex items-center justify-center">
               {activeRecurringCount}
             </span>
           )}
@@ -485,25 +485,26 @@ export default function App() {
         {/* Center Big Add Button */}
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex flex-col items-center justify-center -mt-5 bg-emerald-600 text-white w-12 h-12 rounded-full shadow-lg shadow-emerald-600/40 border-2 border-white cursor-pointer active:scale-95 transition-transform"
+          className="flex flex-col items-center justify-center -mt-6 bg-emerald-600 text-white w-12 h-12 rounded-full shadow-lg shadow-emerald-600/40 border-2 border-white cursor-pointer active:scale-90 transition-transform"
+          aria-label="Ajouter une opération"
         >
           <Plus className="w-6 h-6" />
         </button>
 
         <button
           onClick={() => setIsGoogleDriveModalOpen(true)}
-          className="flex flex-col items-center justify-center text-slate-600 hover:text-emerald-600 transition-colors"
+          className="flex flex-col items-center justify-center text-slate-600 active:text-emerald-600 transition-colors min-w-[54px] min-h-[44px] cursor-pointer"
         >
           <FileSpreadsheet className="w-5 h-5" />
-          <span className="text-[10px] font-medium mt-0.5">Sheets</span>
+          <span className="text-[10px] font-semibold mt-0.5">Sheets</span>
         </button>
 
         <button
           onClick={() => setIsInstallModalOpen(true)}
-          className="flex flex-col items-center justify-center text-slate-600 hover:text-emerald-600 transition-colors"
+          className="flex flex-col items-center justify-center text-slate-600 active:text-emerald-600 transition-colors min-w-[54px] min-h-[44px] cursor-pointer"
         >
           <Smartphone className="w-5 h-5" />
-          <span className="text-[10px] font-medium mt-0.5">Appli</span>
+          <span className="text-[10px] font-semibold mt-0.5">Appli</span>
         </button>
       </nav>
 
