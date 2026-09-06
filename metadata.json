@@ -1,0 +1,6 @@
+{
+  "name": "Fintim - Suivi de Budget",
+  "description": "Application de suivi de budget connectée à Google Sheets avec gestion des comptes, catégories et analytiques.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
