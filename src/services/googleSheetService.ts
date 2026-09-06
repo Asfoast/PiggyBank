@@ -18,11 +18,18 @@ export async function fetchSheetTransactions(webAppUrl: string): Promise<SyncRes
   const cleanUrl = webAppUrl.trim();
 
   try {
-    const response = await fetch(cleanUrl, {
+    // Add cache busting param to avoid mobile browser aggressive caching
+    const fetchUrl = cleanUrl.includes('?') 
+      ? `${cleanUrl}&_t=${Date.now()}` 
+      : `${cleanUrl}?_t=${Date.now()}`;
+
+    const response = await fetch(fetchUrl, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
       },
+      redirect: 'follow',
+      cache: 'no-store',
     });
 
     if (!response.ok) {

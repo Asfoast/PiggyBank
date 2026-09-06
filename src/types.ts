@@ -13,6 +13,9 @@ export interface SyncSettings {
   autoSync: boolean;
   lastSyncTime: string | null;
   sheetName?: string;
+  spreadsheetId?: string;
+  spreadsheetName?: string;
+  syncMethod?: 'oauth' | 'script';
 }
 
 export interface CategorySummary {

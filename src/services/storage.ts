@@ -137,20 +137,54 @@ export function saveStoredTransactions(transactions: Transaction[]): void {
 }
 
 export function getStoredSettings(): SyncSettings {
+  let envUrl = '';
+  try {
+    envUrl = (import.meta as any).env?.VITE_GOOGLE_SCRIPT_URL || '';
+  } catch {}
+
+  // Check URL query parameters (e.g. ?syncUrl=... for easy mobile opening)
+  let queryUrl = '';
+  if (typeof window !== 'undefined') {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlParam = params.get('syncUrl') || params.get('scriptUrl');
+      if (urlParam) {
+        queryUrl = decodeURIComponent(urlParam);
+      }
+    } catch {}
+  }
+
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (queryUrl) {
+        parsed.webAppUrl = queryUrl;
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
+      } else if (!parsed.webAppUrl && envUrl) {
+        parsed.webAppUrl = envUrl;
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
+      }
+      return parsed;
     }
   } catch (err) {
     console.error('Error loading settings:', err);
   }
-  return {
-    webAppUrl: '',
-    autoSync: false,
+
+  const initialSettings: SyncSettings = {
+    webAppUrl: queryUrl || envUrl || '',
+    autoSync: true,
     lastSyncTime: null,
     sheetName: 'Feuille 1',
   };
+
+  if (queryUrl || envUrl) {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(initialSettings));
+    } catch {}
+  }
+
+  return initialSettings;
 }
 
 export function saveStoredSettings(settings: SyncSettings): void {

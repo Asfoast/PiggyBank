@@ -213,6 +213,36 @@ export const GoogleSheetModal: React.FC<GoogleSheetModalProps> = ({
                 </a>
               </div>
 
+              {/* Quick Mobile Sync Link */}
+              {webAppUrl && (
+                <div className="p-3.5 bg-sky-50/80 border border-sky-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h5 className="font-bold text-sky-900 text-xs flex items-center">
+                      <Globe className="w-3.5 h-3.5 mr-1.5 text-sky-600" />
+                      Ouvrir directement sur smartphone
+                    </h5>
+                    <button
+                      onClick={() => {
+                        const currentOrigin = window.location.origin + window.location.pathname;
+                        const mobileUrl = `${currentOrigin}?syncUrl=${encodeURIComponent(webAppUrl.trim())}`;
+                        navigator.clipboard.writeText(mobileUrl);
+                        setTestResult({
+                          success: true,
+                          message: 'Lien mobile copié dans le presse-papier ! Envoyez-le à votre smartphone (WhatsApp, Email...).',
+                        });
+                      }}
+                      className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-[11px] font-semibold flex items-center space-x-1"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>Copier le lien pour téléphone</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-sky-800 leading-relaxed">
+                    Ce lien contient la clé de synchronisation. En l'ouvrant sur votre téléphone, votre Google Sheet se connecte instantanément sans avoir à recopier la longue adresse du script !
+                  </p>
+                </div>
+              )}
+
               {/* Status message */}
               {testResult && (
                 <div
