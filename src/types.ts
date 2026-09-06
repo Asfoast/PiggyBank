@@ -34,3 +34,16 @@ export interface AccountSummary {
   totalSorties: number;
   count: number;
 }
+
+export interface RecurringTransaction {
+  id: string;
+  description: string;
+  montant: number; // Negative for expense (e.g. -12.99), positive for income (+2400)
+  categorie: string;
+  compte: string;
+  dayOfMonth: number; // 1 to 31
+  active: boolean;
+  lastProcessedMonth?: string; // YYYY-MM
+  note?: string;
+}
+

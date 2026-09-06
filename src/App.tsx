@@ -6,13 +6,18 @@ import { BudgetCharts } from './components/BudgetCharts';
 import { TransactionFormModal } from './components/TransactionFormModal';
 import { GoogleSheetModal } from './components/GoogleSheetModal';
 import { GoogleDriveSheetPickerModal } from './components/GoogleDriveSheetPickerModal';
-import { Transaction, SyncSettings } from './types';
+import { RecurringTransactionsModal } from './components/RecurringTransactionsModal';
+import { PwaInstallPrompt } from './components/PwaInstallPrompt';
+import { Transaction, SyncSettings, RecurringTransaction } from './types';
 import { User } from 'firebase/auth';
 import {
   getStoredTransactions,
   saveStoredTransactions,
   getStoredSettings,
   saveStoredSettings,
+  getStoredRecurring,
+  saveStoredRecurring,
+  checkAndGenerateDueRecurring,
   INITIAL_TRANSACTIONS,
 } from './services/storage';
 import { fetchSheetTransactions, pushTransactionToSheet } from './services/googleSheetService';
@@ -21,14 +26,31 @@ import {
   loadTransactionsFromSpreadsheet,
   appendTransactionToSpreadsheet,
 } from './services/googleDriveSheets';
-import { AlertCircle, CheckCircle2, Info, FileSpreadsheet, Check } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Info,
+  FileSpreadsheet,
+  Check,
+  Repeat,
+  Download,
+  Plus,
+  BarChart3,
+  ListFilter,
+  Smartphone,
+} from 'lucide-react';
 
 export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>(getStoredTransactions);
   const [settings, setSettings] = useState<SyncSettings>(getStoredSettings);
+  const [recurringList, setRecurringList] = useState<RecurringTransaction[]>(getStoredRecurring);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGoogleDriveModalOpen, setIsGoogleDriveModalOpen] = useState(false);
+  const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
   const [isSyncing, setIsSyncing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -48,12 +70,42 @@ export default function App() {
     saveStoredSettings(settings);
   }, [settings]);
 
+  useEffect(() => {
+    saveStoredRecurring(recurringList);
+  }, [recurringList]);
+
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type });
     setTimeout(() => {
       setToast(null);
     }, 4500);
   };
+
+  // Auto-check and process due recurring transactions on startup
+  useEffect(() => {
+    const { newTransactions, updatedRecurring } = checkAndGenerateDueRecurring(
+      recurringList,
+      transactions
+    );
+
+    if (newTransactions.length > 0) {
+      setTransactions((prev) => [...newTransactions, ...prev]);
+      setRecurringList(updatedRecurring);
+      showToast(
+        `${newTransactions.length} prélèvement(s) / abonnement(s) récurrent(s) généré(s) pour ce mois !`,
+        'info'
+      );
+
+      // Push newly generated recurring transactions to Google Sheets if synced
+      newTransactions.forEach((tx) => {
+        if (accessToken && settings.spreadsheetId) {
+          appendTransactionToSpreadsheet(accessToken, settings.spreadsheetId, tx).catch(console.warn);
+        } else if (settings.webAppUrl) {
+          pushTransactionToSheet(settings.webAppUrl, tx).catch(console.warn);
+        }
+      });
+    }
+  }, []);
 
   // Listen to Google Auth state
   useEffect(() => {
@@ -248,23 +300,61 @@ export default function App() {
     setIsGoogleDriveModalOpen(true);
   };
 
+  // Handle manual trigger of recurring item
+  const handleTriggerRecurring = async (item: RecurringTransaction) => {
+    const now = new Date();
+    const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const scheduledDate = `${currentYearMonth}-${String(item.dayOfMonth).padStart(2, '0')}`;
+
+    const newTx: Transaction = {
+      id: `rec-manual-${item.id}-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      date: scheduledDate,
+      compte: item.compte,
+      description: `${item.description} (Récurrent)`,
+      categorie: item.categorie,
+      montant: item.montant,
+    };
+
+    setTransactions((prev) => [newTx, ...prev]);
+
+    // Mark as processed this month
+    const updatedList = recurringList.map((r) =>
+      r.id === item.id ? { ...r, lastProcessedMonth: currentYearMonth } : r
+    );
+    setRecurringList(updatedList);
+
+    showToast(`"${item.description}" enregistré pour ce mois-ci !`, 'success');
+
+    // Push to Google Sheets if connected
+    if (accessToken && settings.spreadsheetId) {
+      appendTransactionToSpreadsheet(accessToken, settings.spreadsheetId, newTx).catch(console.warn);
+    } else if (settings.webAppUrl) {
+      pushTransactionToSheet(settings.webAppUrl, newTx).catch(console.warn);
+    }
+  };
+
   // Custom Accounts list
   const customAccounts = useMemo(() => {
     return Array.from(new Set(transactions.map((t) => t.compte).filter(Boolean)));
   }, [transactions]);
 
   const hasAnySheetSync = Boolean((accessToken && settings.spreadsheetId) || settings.webAppUrl);
+  const activeRecurringCount = recurringList.filter((r) => r.active).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-emerald-100 selection:text-emerald-900 pb-20 sm:pb-0">
       {/* Top Navbar */}
       <Navbar
         settings={settings}
         user={user}
         isSyncing={isSyncing}
+        activeRecurringCount={activeRecurringCount}
         onOpenNewTransaction={() => setIsModalOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenGoogleDriveModal={() => setIsGoogleDriveModalOpen(true)}
+        onOpenRecurringModal={() => setIsRecurringModalOpen(true)}
+        onOpenInstallModal={() => setIsInstallModalOpen(true)}
         onManualSync={handleManualSync}
       />
 
@@ -308,7 +398,7 @@ export default function App() {
             <div className="flex items-center space-x-2 text-xs text-emerald-900">
               <Check className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>
-                Feuille Google Drive connectée : <strong>{settings.spreadsheetName || 'Feuille Fintim'}</strong>
+                Feuille Google Drive connectée : <strong>{settings.spreadsheetName || 'Feuille PiggyBank'}</strong>
               </span>
             </div>
             <button
@@ -319,6 +409,32 @@ export default function App() {
             </button>
           </div>
         )}
+
+        {/* Recurring quick shortcut strip */}
+        <div className="mb-6 p-3 bg-pink-50/50 border border-pink-200/70 rounded-2xl flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center shrink-0">
+              <Repeat className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-900">
+                Abonnements & Récurrences mensuelles
+              </p>
+              <p className="text-[11px] text-slate-500">
+                {activeRecurringCount} prélèvement(s) actif(s) programmés chaque mois
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsRecurringModalOpen(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+          >
+            <span>Gérer les abonnements</span>
+            <span className="text-[10px] bg-pink-200 text-pink-800 px-1.5 py-0.2 rounded-full font-bold">
+              {activeRecurringCount}
+            </span>
+          </button>
+        </div>
 
         {/* Top KPI Stats Cards */}
         <StatsCards
@@ -343,17 +459,84 @@ export default function App() {
         />
       </main>
 
+      {/* Mobile Sticky Bottom Navigation Bar */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2 flex items-center justify-around">
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="flex flex-col items-center justify-center text-slate-600 hover:text-emerald-600 transition-colors"
+        >
+          <BarChart3 className="w-5 h-5" />
+          <span className="text-[10px] font-medium mt-0.5">Budget</span>
+        </button>
+
+        <button
+          onClick={() => setIsRecurringModalOpen(true)}
+          className="flex flex-col items-center justify-center text-pink-600 hover:text-pink-700 transition-colors relative"
+        >
+          <Repeat className="w-5 h-5" />
+          <span className="text-[10px] font-semibold mt-0.5">Abos</span>
+          {activeRecurringCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-pink-600 text-white text-[9px] font-bold flex items-center justify-center">
+              {activeRecurringCount}
+            </span>
+          )}
+        </button>
+
+        {/* Center Big Add Button */}
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex flex-col items-center justify-center -mt-5 bg-emerald-600 text-white w-12 h-12 rounded-full shadow-lg shadow-emerald-600/40 border-2 border-white cursor-pointer active:scale-95 transition-transform"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+
+        <button
+          onClick={() => setIsGoogleDriveModalOpen(true)}
+          className="flex flex-col items-center justify-center text-slate-600 hover:text-emerald-600 transition-colors"
+        >
+          <FileSpreadsheet className="w-5 h-5" />
+          <span className="text-[10px] font-medium mt-0.5">Sheets</span>
+        </button>
+
+        <button
+          onClick={() => setIsInstallModalOpen(true)}
+          className="flex flex-col items-center justify-center text-slate-600 hover:text-emerald-600 transition-colors"
+        >
+          <Smartphone className="w-5 h-5" />
+          <span className="text-[10px] font-medium mt-0.5">Appli</span>
+        </button>
+      </nav>
+
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
-        <p>
-          Fintim Suivi de Budget • Google Sheets & Google Drive
+        <p className="flex items-center justify-center space-x-1">
+          <span>PiggyBank • Gestion de Budget & Abonnements</span>
           {settings.lastSyncTime && (
-            <span className="ml-2 text-slate-400">
-              (Dernière synchronisation : {settings.lastSyncTime})
+            <span className="text-slate-400">
+              (Dernière sync : {settings.lastSyncTime})
             </span>
           )}
         </p>
       </footer>
+
+      {/* Recurring Transactions Modal */}
+      <RecurringTransactionsModal
+        isOpen={isRecurringModalOpen}
+        onClose={() => setIsRecurringModalOpen(false)}
+        recurringList={recurringList}
+        onSaveRecurringList={(newList) => {
+          setRecurringList(newList);
+          showToast("Abonnements et récurrences mis à jour !", 'success');
+        }}
+        onTriggerRecurring={handleTriggerRecurring}
+        customAccounts={customAccounts}
+      />
+
+      {/* PWA Install Prompt */}
+      <PwaInstallPrompt
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+      />
 
       {/* Transaction Modal */}
       <TransactionFormModal

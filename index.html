@@ -1,18 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Fintim - Suivi de Budget</title>
-    <meta name="description" content="Application de suivi de budget connectée à Google Sheets avec gestion des comptes, catégories et analytiques." />
-    <meta property="og:title" content="Fintim - Suivi de Budget" />
-    <meta property="og:description" content="Application de suivi de budget connectée à Google Sheets avec gestion des comptes, catégories et analytiques." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>PiggyBank - Gestion de Budget & Abonnements</title>
+    <meta name="description" content="PiggyBank : Suivi de budget et abonnements récurrents synchronisé avec Google Sheets et Google Drive." />
+    <meta property="og:title" content="PiggyBank - Gestion de Budget & Abonnements" />
+    <meta property="og:description" content="PiggyBank : Suivi de budget et abonnements récurrents synchronisé avec Google Sheets et Google Drive." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- PWA & Mobile Meta -->
+    <meta name="theme-color" content="#059669" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="PiggyBank" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" href="/icon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => {
+            console.log('Service Worker registration skipped/failed:', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>
 

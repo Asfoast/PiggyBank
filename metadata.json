@@ -1,6 +1,6 @@
 {
-  "name": "Fintim - Suivi de Budget",
-  "description": "Application de suivi de budget connectée à Google Sheets avec gestion des comptes, catégories et analytiques.",
+  "name": "PiggyBank",
+  "description": "Application de gestion de budget et d'abonnements synchronisée avec Google Sheets et Google Drive, installable sur mobile.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

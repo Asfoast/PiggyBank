@@ -31,12 +31,12 @@ export async function listDriveSpreadsheets(accessToken: string): Promise<DriveF
 }
 
 /**
- * Create a new Google Spreadsheet with predefined Fintim columns:
+ * Create a new Google Spreadsheet with predefined PiggyBank columns:
  * Timestamp, Date, Compte, Description, Categorie, Montant
  */
 export async function createBudgetSpreadsheet(
   accessToken: string,
-  title: string = 'Fintim - Suivi de Budget'
+  title: string = 'PiggyBank - Suivi de Budget'
 ): Promise<DriveFile> {
   const url = 'https://sheets.googleapis.com/v4/spreadsheets';
 

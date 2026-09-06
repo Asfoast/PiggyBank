@@ -91,7 +91,7 @@ export const GoogleSheetModal: React.FC<GoogleSheetModalProps> = ({
                 Connexion Google Sheet & Déploiement Netlify
               </h2>
               <p className="text-xs text-slate-500">
-                Liaison directe avec votre script Google et mise à jour de Fintim
+                Liaison directe avec votre script Google et mise à jour de PiggyBank
               </p>
             </div>
           </div>
@@ -400,7 +400,7 @@ export const GoogleSheetModal: React.FC<GoogleSheetModalProps> = ({
         {/* Modal Footer */}
         <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
           <span className="text-[11px] text-slate-400">
-            Fintim • Suivi de budget personnel
+            PiggyBank • Suivi de budget personnel
           </span>
           <button
             onClick={onClose}

@@ -1,7 +1,156 @@
-import { Transaction, SyncSettings } from '../types';
+import { Transaction, SyncSettings, RecurringTransaction } from '../types';
 
 const STORAGE_KEY = 'fintim_transactions_v1';
 const SETTINGS_KEY = 'fintim_settings_v1';
+const RECURRING_KEY = 'piggybank_recurring_v1';
+
+export const INITIAL_RECURRING: RecurringTransaction[] = [
+  {
+    id: 'rec-1',
+    description: 'Loyer Appartement',
+    montant: -780.00,
+    categorie: 'Logement',
+    compte: 'Compte Courant',
+    dayOfMonth: 1,
+    active: true,
+    note: 'Prélèvement automatique le 1er du mois',
+  },
+  {
+    id: 'rec-2',
+    description: 'Abonnement Netflix',
+    montant: -13.49,
+    categorie: 'Abonnements',
+    compte: 'Carte Bancaire',
+    dayOfMonth: 5,
+    active: true,
+    note: 'Forfait Standard',
+  },
+  {
+    id: 'rec-3',
+    description: 'Abonnement Spotify Premium',
+    montant: -10.99,
+    categorie: 'Abonnements',
+    compte: 'Carte Bancaire',
+    dayOfMonth: 12,
+    active: true,
+    note: 'Musique en streaming',
+  },
+  {
+    id: 'rec-4',
+    description: 'Box Internet Fibre',
+    montant: -29.99,
+    categorie: 'Logement',
+    compte: 'Compte Courant',
+    dayOfMonth: 15,
+    active: true,
+    note: 'Facture mensuelle opérateur',
+  },
+  {
+    id: 'rec-5',
+    description: 'Pass Navigo / Transports',
+    montant: -86.40,
+    categorie: 'Transports',
+    compte: 'Compte Courant',
+    dayOfMonth: 5,
+    active: true,
+    note: 'Abonnement mensuel transport',
+  },
+  {
+    id: 'rec-6',
+    description: 'Virement Salaire',
+    montant: 2650.00,
+    categorie: 'Salaire & Revenus',
+    compte: 'Compte Courant',
+    dayOfMonth: 28,
+    active: true,
+    note: 'Salaire mensuel employeur',
+  },
+];
+
+export function getStoredRecurring(): RecurringTransaction[] {
+  try {
+    const raw = localStorage.getItem(RECURRING_KEY);
+    if (!raw) {
+      localStorage.setItem(RECURRING_KEY, JSON.stringify(INITIAL_RECURRING));
+      return INITIAL_RECURRING;
+    }
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error('Error loading recurring transactions:', err);
+    return INITIAL_RECURRING;
+  }
+}
+
+export function saveStoredRecurring(recurring: RecurringTransaction[]): void {
+  try {
+    localStorage.setItem(RECURRING_KEY, JSON.stringify(recurring));
+  } catch (err) {
+    console.error('Error saving recurring transactions:', err);
+  }
+}
+
+/**
+ * Checks active recurring transactions and generates any that are due for the current month
+ * (if dayOfMonth <= today's day, and not already generated for current YYYY-MM)
+ */
+export function checkAndGenerateDueRecurring(
+  recurringList: RecurringTransaction[],
+  existingTransactions: Transaction[]
+): {
+  newTransactions: Transaction[];
+  updatedRecurring: RecurringTransaction[];
+} {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonthNum = now.getMonth() + 1; // 1-12
+  const currentDay = now.getDate();
+  const currentMonthStr = `${currentYear}-${String(currentMonthNum).padStart(2, '0')}`;
+
+  const newTransactions: Transaction[] = [];
+  const updatedRecurring = recurringList.map((rec) => {
+    if (!rec.active) return rec;
+
+    // Check if already processed this month
+    if (rec.lastProcessedMonth === currentMonthStr) {
+      return rec;
+    }
+
+    // Check if due day has been reached this month
+    if (currentDay >= rec.dayOfMonth) {
+      const scheduledDate = `${currentMonthStr}-${String(rec.dayOfMonth).padStart(2, '0')}`;
+
+      // Check if duplicate transaction already exists in current list
+      const alreadyExists = existingTransactions.some(
+        (t) =>
+          t.description.toLowerCase().trim() === rec.description.toLowerCase().trim() &&
+          t.date.startsWith(currentMonthStr)
+      );
+
+      if (!alreadyExists) {
+        const newTx: Transaction = {
+          id: `rec-auto-${rec.id}-${currentMonthStr}-${Date.now()}`,
+          timestamp: `${scheduledDate}T08:00:00.000Z`,
+          date: scheduledDate,
+          compte: rec.compte,
+          description: `${rec.description} (Récurrent)`,
+          categorie: rec.categorie,
+          montant: rec.montant,
+        };
+        newTransactions.push(newTx);
+      }
+
+      return {
+        ...rec,
+        lastProcessedMonth: currentMonthStr,
+      };
+    }
+
+    return rec;
+  });
+
+  return { newTransactions, updatedRecurring };
+}
+
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [
   {

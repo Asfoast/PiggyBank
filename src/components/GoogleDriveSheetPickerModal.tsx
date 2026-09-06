@@ -150,7 +150,7 @@ export const GoogleDriveSheetPickerModal: React.FC<GoogleDriveSheetPickerModalPr
     setStatusMessage(null);
 
     try {
-      const newSheet = await createBudgetSpreadsheet(accessToken, 'Fintim - Suivi de Budget');
+      const newSheet = await createBudgetSpreadsheet(accessToken, 'PiggyBank - Suivi de Budget');
       
       const newSettings: SyncSettings = {
         ...settings,
@@ -448,7 +448,7 @@ export const GoogleDriveSheetPickerModal: React.FC<GoogleDriveSheetPickerModalPr
         {/* Modal Footer */}
         <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
           <span className="text-[11px] text-slate-400">
-            Fintim • Connexion officielle Google Sheets & Drive
+            PiggyBank • Connexion officielle Google Sheets & Drive
           </span>
           <button
             onClick={onClose}

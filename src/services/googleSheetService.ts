@@ -145,7 +145,7 @@ export async function pushTransactionToSheet(
  * Standard Apps Script template matching Timestamp, Date, Compte, Description, Categorie, Montant
  */
 export const RECOMMENDED_APPS_SCRIPT_CODE = `/**
- * Google Apps Script pour Fintim - Suivi de Budget
+ * Google Apps Script pour PiggyBank - Suivi de Budget & Abonnements
  * Colonnes de la feuille : Timestamp | Date | Compte | Description | Categorie | Montant
  */
 
