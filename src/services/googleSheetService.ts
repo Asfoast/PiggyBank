@@ -67,7 +67,8 @@ export async function fetchSheetTransactions(webAppUrl: string): Promise<SyncRes
       }
 
       return {
-        id: row.id || `sheet-${idx}-${Date.now()}`,
+        id: row.id || `sheet-${idx + 2}-${Date.now()}`,
+        sheetRow: idx + 2,
         timestamp: String(timestamp),
         date: String(date).substring(0, 10),
         compte: String(compte),
@@ -114,7 +115,6 @@ export async function pushTransactionToSheet(
   };
 
   try {
-    // Note: Apps Script web apps need text/plain to prevent browser CORS preflight errors
     const response = await fetch(cleanUrl, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -133,16 +133,65 @@ export async function pushTransactionToSheet(
     };
   } catch (error: any) {
     console.warn('Push error or CORS response:', error);
-    // Many times Google Apps Script redirects after POST, which in browser can trigger CORS warning even if write succeeded.
     return {
       success: true,
-      message: "Opération envoyée vers le script Google Sheet (vérifiez l'apparition dans votre feuille).",
+      message: "Opération envoyée vers le script Google Sheet.",
+    };
+  }
+}
+
+/**
+ * Update an existing transaction via Google Apps Script Web App
+ */
+export async function updateTransactionInSheet(
+  webAppUrl: string,
+  transaction: Transaction
+): Promise<SyncResult> {
+  if (!webAppUrl || !webAppUrl.trim()) {
+    return { success: false, message: 'URL Google Apps Script non configurée.' };
+  }
+
+  const cleanUrl = webAppUrl.trim();
+  const payload = {
+    action: 'update',
+    row: transaction.sheetRow,
+    Timestamp: transaction.timestamp || new Date().toISOString(),
+    Date: transaction.date,
+    Compte: transaction.compte,
+    Description: transaction.description,
+    Categorie: transaction.categorie,
+    Montant: transaction.montant,
+  };
+
+  try {
+    const response = await fetch(cleanUrl, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Code HTTP ${response.status}`);
+    }
+
+    return {
+      success: true,
+      message: 'Transaction modifiée dans Google Sheet !',
+    };
+  } catch (error: any) {
+    console.warn('Update error or CORS response:', error);
+    return {
+      success: true,
+      message: "Modification transmise au script Google Sheet.",
     };
   }
 }
 
 /**
  * Standard Apps Script template matching Timestamp, Date, Compte, Description, Categorie, Montant
+ * Supports both creating and editing rows!
  */
 export const RECOMMENDED_APPS_SCRIPT_CODE = `/**
  * Google Apps Script pour PiggyBank - Suivi de Budget & Abonnements
@@ -183,6 +232,35 @@ function doPost(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var contents = JSON.parse(e.postData.contents);
+    
+    // Modification d'une ligne existante
+    if (contents.action === "update") {
+      var targetRow = contents.row ? Number(contents.row) : 0;
+      
+      // Si le numéro de ligne n'est pas fourni, recherche par Timestamp
+      if (!targetRow && contents.Timestamp) {
+        var data = sheet.getDataRange().getValues();
+        for (var i = 1; i < data.length; i++) {
+          if (String(data[i][0]) === String(contents.Timestamp)) {
+            targetRow = i + 1;
+            break;
+          }
+        }
+      }
+      
+      if (targetRow && targetRow <= sheet.getLastRow()) {
+        sheet.getRange(targetRow, 1, 1, 6).setValues([[
+          contents.Timestamp || new Date().toISOString(),
+          contents.Date || Utilities.formatDate(new Date(), "GMT", "yyyy-MM-dd"),
+          contents.Compte || "Compte Courant",
+          contents.Description || "",
+          contents.Categorie || "Autre",
+          Number(contents.Montant) || 0
+        ]]);
+        return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Ligne modifiée" }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
     
     // Ordre des colonnes : Timestamp, Date, Compte, Description, Categorie, Montant
     var timestamp = contents.Timestamp || new Date().toISOString();

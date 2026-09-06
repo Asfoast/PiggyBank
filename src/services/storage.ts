@@ -1,8 +1,10 @@
 import { Transaction, SyncSettings, RecurringTransaction } from '../types';
+import { CategoryConfig, DEFAULT_CATEGORIES } from '../data/categories';
 
 const STORAGE_KEY = 'fintim_transactions_v1';
 const SETTINGS_KEY = 'fintim_settings_v1';
 const RECURRING_KEY = 'piggybank_recurring_v1';
+const CATEGORIES_KEY = 'piggybank_categories_v1';
 
 export const INITIAL_RECURRING: RecurringTransaction[] = [
   {
@@ -343,3 +345,30 @@ export function saveStoredSettings(settings: SyncSettings): void {
     console.error('Error saving settings:', err);
   }
 }
+
+export function getStoredCategories(): CategoryConfig[] {
+  try {
+    const raw = localStorage.getItem(CATEGORIES_KEY);
+    if (!raw) {
+      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(DEFAULT_CATEGORIES));
+      return DEFAULT_CATEGORIES;
+    }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    return DEFAULT_CATEGORIES;
+  } catch (err) {
+    console.error('Error loading stored categories:', err);
+    return DEFAULT_CATEGORIES;
+  }
+}
+
+export function saveStoredCategories(categories: CategoryConfig[]): void {
+  try {
+    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+  } catch (err) {
+    console.error('Error saving categories:', err);
+  }
+}
+

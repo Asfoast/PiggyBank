@@ -4,11 +4,12 @@ import { StatsCards } from './components/StatsCards';
 import { TransactionList } from './components/TransactionList';
 import { BudgetCharts } from './components/BudgetCharts';
 import { TransactionFormModal } from './components/TransactionFormModal';
-import { GoogleSheetModal } from './components/GoogleSheetModal';
+import { SettingsModal } from './components/SettingsModal';
 import { GoogleDriveSheetPickerModal } from './components/GoogleDriveSheetPickerModal';
 import { RecurringTransactionsModal } from './components/RecurringTransactionsModal';
 import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { Transaction, SyncSettings, RecurringTransaction } from './types';
+import { CategoryConfig } from './data/categories';
 import { User } from 'firebase/auth';
 import {
   getStoredTransactions,
@@ -17,6 +18,8 @@ import {
   saveStoredSettings,
   getStoredRecurring,
   saveStoredRecurring,
+  getStoredCategories,
+  saveStoredCategories,
   checkAndGenerateDueRecurring,
   INITIAL_TRANSACTIONS,
 } from './services/storage';
@@ -37,13 +40,14 @@ import {
   Plus,
   BarChart3,
   ListFilter,
-  Smartphone,
+  Settings,
 } from 'lucide-react';
 
 export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>(getStoredTransactions);
   const [settings, setSettings] = useState<SyncSettings>(getStoredSettings);
   const [recurringList, setRecurringList] = useState<RecurringTransaction[]>(getStoredRecurring);
+  const [categories, setCategories] = useState<CategoryConfig[]>(getStoredCategories);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -73,6 +77,10 @@ export default function App() {
   useEffect(() => {
     saveStoredRecurring(recurringList);
   }, [recurringList]);
+
+  useEffect(() => {
+    saveStoredCategories(categories);
+  }, [categories]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type });
@@ -334,6 +342,18 @@ export default function App() {
     }
   };
 
+  // Open the designated Google Sheet directly as database
+  const handleOpenSheetDirectly = () => {
+    if (settings.spreadsheetId) {
+      const url = `https://docs.google.com/spreadsheets/d/${settings.spreadsheetId}/edit`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      showToast(`Ouverture de la feuille Google Sheet "${settings.spreadsheetName || 'Base de données'}"...`, 'info');
+    } else {
+      setIsGoogleDriveModalOpen(true);
+      showToast("Veuillez d'abord connecter ou sélectionner votre feuille Google Sheet.", 'info');
+    }
+  };
+
   // Custom Accounts list
   const customAccounts = useMemo(() => {
     return Array.from(new Set(transactions.map((t) => t.compte).filter(Boolean)));
@@ -353,8 +373,8 @@ export default function App() {
         onOpenNewTransaction={() => setIsModalOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenGoogleDriveModal={() => setIsGoogleDriveModalOpen(true)}
+        onOpenSheetDirectly={handleOpenSheetDirectly}
         onOpenRecurringModal={() => setIsRecurringModalOpen(true)}
-        onOpenInstallModal={() => setIsInstallModalOpen(true)}
         onManualSync={handleManualSync}
       />
 
@@ -447,7 +467,11 @@ export default function App() {
         />
 
         {/* Visual Charts & Category Analytics */}
-        <BudgetCharts transactions={transactions} selectedMonth={selectedMonth} />
+        <BudgetCharts
+          transactions={transactions}
+          selectedMonth={selectedMonth}
+          categories={categories}
+        />
 
         {/* Transaction History & Search/Filters */}
         <TransactionList
@@ -456,6 +480,7 @@ export default function App() {
           selectedMonth={selectedMonth}
           onMonthChange={setSelectedMonth}
           availableMonths={availableMonths}
+          categories={categories}
         />
       </main>
 
@@ -491,20 +516,24 @@ export default function App() {
           <Plus className="w-6 h-6" />
         </button>
 
+        {/* Sheets Tab: Opens the connected Google Sheet directly */}
         <button
-          onClick={() => setIsGoogleDriveModalOpen(true)}
+          onClick={handleOpenSheetDirectly}
           className="flex flex-col items-center justify-center text-slate-600 active:text-emerald-600 transition-colors min-w-[54px] min-h-[44px] cursor-pointer"
+          title="Ouvrir la feuille Google Sheet"
         >
-          <FileSpreadsheet className="w-5 h-5" />
+          <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
           <span className="text-[10px] font-semibold mt-0.5">Sheets</span>
         </button>
 
+        {/* Paramètres Tab: Replaces Appli with full settings hub */}
         <button
-          onClick={() => setIsInstallModalOpen(true)}
+          onClick={() => setIsSettingsOpen(true)}
           className="flex flex-col items-center justify-center text-slate-600 active:text-emerald-600 transition-colors min-w-[54px] min-h-[44px] cursor-pointer"
+          title="Paramètres, Catégories, Télécharger l'app et Google"
         >
-          <Smartphone className="w-5 h-5" />
-          <span className="text-[10px] font-semibold mt-0.5">Appli</span>
+          <Settings className="w-5 h-5" />
+          <span className="text-[10px] font-semibold mt-0.5">Paramètres</span>
         </button>
       </nav>
 
@@ -525,6 +554,7 @@ export default function App() {
         isOpen={isRecurringModalOpen}
         onClose={() => setIsRecurringModalOpen(false)}
         recurringList={recurringList}
+        categories={categories}
         onSaveRecurringList={(newList) => {
           setRecurringList(newList);
           showToast("Abonnements et récurrences mis à jour !", 'success');
@@ -546,6 +576,11 @@ export default function App() {
         onAddTransaction={handleAddTransaction}
         hasSheetSync={hasAnySheetSync}
         customAccounts={customAccounts}
+        categories={categories}
+        onAddCategory={(newCat) => {
+          setCategories((prev) => [...prev, newCat]);
+          showToast(`Catégorie "${newCat.name}" ajoutée !`, 'success');
+        }}
       />
 
       {/* Google Drive Sheet Picker Modal */}
@@ -578,19 +613,34 @@ export default function App() {
         }}
       />
 
-      {/* Google Apps Script & Netlify Settings Modal */}
-      <GoogleSheetModal
+      {/* Settings Modal (Paramètres Hub: Catégories, Téléchargement, Google, Avancé) */}
+      <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        categories={categories}
+        onSaveCategories={(newCats) => {
+          setCategories(newCats);
+          showToast("Catégories mises à jour !", 'success');
+        }}
+        transactions={transactions}
+        onUpdateTransactions={(newTx) => {
+          setTransactions(newTx);
+        }}
+        recurringList={recurringList}
+        onUpdateRecurringList={(newRec) => {
+          setRecurringList(newRec);
+        }}
         settings={settings}
         onSaveSettings={(newSettings) => {
           setSettings(newSettings);
           showToast("Paramètres enregistrés.", 'success');
         }}
-        onImportTransactions={(imported) => {
-          setTransactions(imported);
-          showToast(`${imported.length} transactions importées avec succès !`, 'success');
+        user={user}
+        onOpenGoogleDriveModal={() => {
+          setIsSettingsOpen(false);
+          setIsGoogleDriveModalOpen(true);
         }}
+        onOpenSheetDirectly={handleOpenSheetDirectly}
         onResetDemoData={() => {
           setTransactions(INITIAL_TRANSACTIONS);
           showToast("Données de démonstration rétablies.", 'info');

@@ -1,15 +1,20 @@
 import React, { useMemo } from 'react';
 import { PieChart, Wallet, ArrowUpRight, ArrowDownRight, Tag } from 'lucide-react';
 import { Transaction, CategorySummary, AccountSummary } from '../types';
-import { DEFAULT_CATEGORIES } from '../data/categories';
+import { DEFAULT_CATEGORIES, CategoryConfig } from '../data/categories';
 import { formatEuro } from './StatsCards';
 
 interface BudgetChartsProps {
   transactions: Transaction[];
   selectedMonth: string;
+  categories?: CategoryConfig[];
 }
 
-export const BudgetCharts: React.FC<BudgetChartsProps> = ({ transactions, selectedMonth }) => {
+export const BudgetCharts: React.FC<BudgetChartsProps> = ({
+  transactions,
+  selectedMonth,
+  categories = DEFAULT_CATEGORIES,
+}) => {
   // Filter for period
   const periodTransactions = useMemo(() => {
     if (selectedMonth === 'ALL') return transactions;
@@ -34,7 +39,7 @@ export const BudgetCharts: React.FC<BudgetChartsProps> = ({ transactions, select
 
     const list: CategorySummary[] = [];
     map.forEach((value, key) => {
-      const catConfig = DEFAULT_CATEGORIES.find((c) => c.name === key);
+      const catConfig = categories.find((c) => c.name === key);
       list.push({
         categorie: key,
         total: value.total,

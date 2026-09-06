@@ -1,8 +1,6 @@
 // PiggyBank Service Worker
-const CACHE_NAME = 'piggybank-cache-v1';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
+const CACHE_NAME = 'piggybank-cache-v2';
+const STATIC_ASSETS = [
   '/manifest.json',
   '/icon.png',
   '/icons/icon-192x192.png',
@@ -13,7 +11,9 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE).catch((err) => console.warn('Cache add error', err));
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        console.warn('[SW] Cache add warning:', err);
+      });
     })
   );
   self.skipWaiting();
@@ -25,6 +25,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log('[SW] Clearing old cache:', key);
             return caches.delete(key);
           }
         })
@@ -35,22 +36,58 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only cache GET requests that are not Google APIs or scripts
+  const url = event.request.url;
+
+  // Ignore non-GET, Chrome extension, Firebase, Google APIs, and script calls
   if (
-    event.request.method === 'GET' &&
-    !event.request.url.includes('googleapis.com') &&
-    !event.request.url.includes('script.google.com') &&
-    !event.request.url.includes('identitytoolkit')
+    event.request.method !== 'GET' ||
+    url.startsWith('chrome-extension:') ||
+    url.includes('googleapis.com') ||
+    url.includes('script.google.com') ||
+    url.includes('identitytoolkit') ||
+    url.includes('firebaseio.com')
   ) {
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(event.request).catch(() => {
-          return caches.match('/');
-        });
-      })
-    );
+    return;
   }
+
+  // 1. Navigation requests (HTML documents): NETWORK FIRST with cache fallback
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          return (await caches.match('/index.html')) || (await caches.match('/'));
+        })
+    );
+    return;
+  }
+
+  // 2. Static assets: STALE-WHILE-REVALIDATE or Cache first
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => cachedResponse);
+
+      return cachedResponse || fetchPromise;
+    })
+  );
 });

@@ -16,6 +16,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { RecurringTransaction, Transaction } from '../types';
+import { CategoryConfig, DEFAULT_CATEGORIES } from '../data/categories';
 
 interface RecurringTransactionsModalProps {
   isOpen: boolean;
@@ -24,20 +25,8 @@ interface RecurringTransactionsModalProps {
   onSaveRecurringList: (list: RecurringTransaction[]) => void;
   onTriggerRecurring: (recurringItem: RecurringTransaction) => void;
   customAccounts: string[];
+  categories?: CategoryConfig[];
 }
-
-const CATEGORIES = [
-  'Logement',
-  'Abonnements',
-  'Transports',
-  'Alimentation',
-  'Santé',
-  'Loisirs & Sorties',
-  'Shopping & Maison',
-  'Épargne & Invest.',
-  'Salaire & Revenus',
-  'Autre',
-];
 
 export const RecurringTransactionsModal: React.FC<RecurringTransactionsModalProps> = ({
   isOpen,
@@ -46,6 +35,7 @@ export const RecurringTransactionsModal: React.FC<RecurringTransactionsModalProp
   onSaveRecurringList,
   onTriggerRecurring,
   customAccounts,
+  categories = DEFAULT_CATEGORIES,
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -325,9 +315,9 @@ export const RecurringTransactionsModal: React.FC<RecurringTransactionsModalProp
                     onChange={(e) => setCategorie(e.target.value)}
                     className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
+                    {categories.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
                       </option>
                     ))}
                   </select>

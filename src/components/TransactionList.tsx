@@ -1,23 +1,27 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Trash2, Download, ArrowDownLeft, ArrowUpRight, Calendar, Tag, CreditCard, AlertCircle } from 'lucide-react';
+import { Search, Filter, Trash2, Pencil, Download, ArrowDownLeft, ArrowUpRight, Calendar, Tag, CreditCard, AlertCircle, FileSpreadsheet } from 'lucide-react';
 import { Transaction } from '../types';
-import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS } from '../data/categories';
+import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS, CategoryConfig } from '../data/categories';
 import { formatEuro } from './StatsCards';
 
 interface TransactionListProps {
   transactions: Transaction[];
   onDeleteTransaction: (id: string) => void;
+  onEditTransaction?: (tx: Transaction) => void;
   selectedMonth: string;
   onMonthChange: (month: string) => void;
   availableMonths: string[];
+  categories?: CategoryConfig[];
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({
   transactions,
   onDeleteTransaction,
+  onEditTransaction,
   selectedMonth,
   onMonthChange,
   availableMonths,
+  categories = DEFAULT_CATEGORIES,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompte, setSelectedCompte] = useState('ALL');
@@ -64,8 +68,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
   const categoriesList = useMemo(() => {
     const fromData = Array.from(new Set(transactions.map((t) => t.categorie).filter(Boolean)));
-    return Array.from(new Set([...DEFAULT_CATEGORIES.map((c) => c.name), ...fromData]));
-  }, [transactions]);
+    return Array.from(new Set([...categories.map((c) => c.name), ...fromData]));
+  }, [transactions, categories]);
 
   // Export CSV matching: Timestamp,Date,Compte,Description,Categorie,Montant
   const handleExportCSV = () => {
@@ -92,8 +96,13 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
   // Helper for category badge color
   const getCategoryBadgeClass = (categoryName: string) => {
-    const found = DEFAULT_CATEGORIES.find((c) => c.name === categoryName);
+    const found = categories.find((c) => c.name === categoryName);
     return found ? found.badgeBg : 'bg-slate-100 text-slate-700 border-slate-200';
+  };
+
+  const getCategoryColor = (categoryName: string) => {
+    const found = categories.find((c) => c.name === categoryName);
+    return found ? found.color : '#94a3b8';
   };
 
   // Total visible amount
@@ -233,40 +242,68 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900 truncate">
-                          {tx.description}
-                        </p>
+                        <div className="flex items-center space-x-1.5">
+                          <p 
+                            onClick={() => onEditTransaction && onEditTransaction(tx)}
+                            className="text-xs font-bold text-slate-900 truncate hover:text-emerald-700 cursor-pointer"
+                            title="Modifier cette opération"
+                          >
+                            {tx.description}
+                          </p>
+                          {tx.sheetRow && (
+                            <span 
+                              className="inline-flex items-center text-[9px] px-1 py-0.2 bg-emerald-50 text-emerald-700 rounded font-medium shrink-0" 
+                              title={`Synchronisée avec la feuille (Ligne ${tx.sheetRow})`}
+                            >
+                              <FileSpreadsheet className="w-2.5 h-2.5 mr-0.5" />
+                              L{tx.sheetRow}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
                           <span>{tx.date}</span>
                           <span>•</span>
                           <span className="truncate max-w-[90px]">{tx.compte}</span>
                           <span>•</span>
                           <span
-                            className={`px-1.5 py-0.2 rounded-md font-medium border text-[9px] ${getCategoryBadgeClass(
+                            className={`inline-flex items-center px-1.5 py-0.2 rounded-md font-medium border text-[9px] ${getCategoryBadgeClass(
                               tx.categorie
                             )}`}
                           >
+                            <span
+                              className="w-1.5 h-1.5 rounded-full mr-1 shrink-0"
+                              style={{ backgroundColor: getCategoryColor(tx.categorie) }}
+                            />
                             {tx.categorie}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 shrink-0">
+                    <div className="flex items-center space-x-1.5 shrink-0">
                       <span
-                        className={`text-xs font-extrabold tracking-tight ${
+                        className={`text-xs font-extrabold tracking-tight mr-1 ${
                           isPositive ? 'text-emerald-600' : 'text-slate-900'
                         }`}
                       >
                         {isPositive ? `+${formatEuro(tx.montant)}` : formatEuro(tx.montant)}
                       </span>
+                      {onEditTransaction && (
+                        <button
+                          onClick={() => onEditTransaction(tx)}
+                          className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 rounded-lg transition-colors cursor-pointer min-h-[34px] min-w-[34px] flex items-center justify-center"
+                          title="Modifier l'opération"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           if (window.confirm(`Supprimer l'opération "${tx.description}" ?`)) {
                             onDeleteTransaction(tx.id);
                           }
                         }}
-                        className="p-2 text-slate-300 hover:text-rose-600 active:text-rose-700 transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
+                        className="p-1.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 active:text-rose-700 rounded-lg transition-colors cursor-pointer min-h-[34px] min-w-[34px] flex items-center justify-center"
                         title="Supprimer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -287,7 +324,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                     <th className="py-3 px-4">Catégorie</th>
                     <th className="py-3 px-4">Compte</th>
                     <th className="py-3 px-4 text-right">Montant</th>
-                    <th className="py-3 px-4 text-center w-12">Action</th>
+                    <th className="py-3 px-4 text-center w-20">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
@@ -305,8 +342,25 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                         </td>
 
                         {/* Description */}
-                        <td className="py-3 px-4 text-slate-900 font-medium max-w-xs truncate">
-                          {tx.description}
+                        <td className="py-3 px-4 text-slate-900 font-medium max-w-xs">
+                          <div className="flex items-center space-x-2">
+                            <span 
+                              onClick={() => onEditTransaction && onEditTransaction(tx)}
+                              className="truncate hover:text-emerald-700 cursor-pointer font-medium"
+                              title="Cliquer pour modifier"
+                            >
+                              {tx.description}
+                            </span>
+                            {tx.sheetRow && (
+                              <span 
+                                className="inline-flex items-center text-[10px] px-1.5 py-0.2 bg-emerald-50 text-emerald-700 rounded font-medium shrink-0" 
+                                title={`Synchronisée avec la feuille Google Sheet (Ligne ${tx.sheetRow})`}
+                              >
+                                <FileSpreadsheet className="w-3 h-3 mr-0.5" />
+                                L{tx.sheetRow}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Categorie */}
@@ -316,6 +370,10 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                               tx.categorie
                             )}`}
                           >
+                            <span
+                              className="w-1.5 h-1.5 rounded-full mr-1.5 shrink-0"
+                              style={{ backgroundColor: getCategoryColor(tx.categorie) }}
+                            />
                             {tx.categorie}
                           </span>
                         </td>
@@ -335,19 +393,30 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                           </span>
                         </td>
 
-                        {/* Delete action */}
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => {
-                              if (window.confirm(`Supprimer l'opération "${tx.description}" ?`)) {
-                                onDeleteTransaction(tx.id);
-                              }
-                            }}
-                            title="Supprimer cette opération"
-                            className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                        {/* Edit & Delete actions */}
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center space-x-1">
+                            {onEditTransaction && (
+                              <button
+                                onClick={() => onEditTransaction(tx)}
+                                title="Modifier cette opération"
+                                className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Supprimer l'opération "${tx.description}" ?`)) {
+                                  onDeleteTransaction(tx.id);
+                                }
+                              }}
+                              title="Supprimer cette opération"
+                              className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

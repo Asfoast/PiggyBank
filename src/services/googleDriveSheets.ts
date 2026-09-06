@@ -156,7 +156,8 @@ export async function loadTransactionsFromSpreadsheet(
     }
 
     transactions.push({
-      id: `gsheet-${i}-${Date.now()}`,
+      id: `gsheet-${i + 1}-${timestamp.replace(/[^a-zA-Z0-9]/g, '')}`,
+      sheetRow: i + 1,
       timestamp,
       date,
       compte,
@@ -171,12 +172,13 @@ export async function loadTransactionsFromSpreadsheet(
 
 /**
  * Append a transaction to the spreadsheet (range 'A:F')
+ * Returns the 1-based row number where it was inserted (if available)
  */
 export async function appendTransactionToSpreadsheet(
   accessToken: string,
   spreadsheetId: string,
   tx: Transaction
-): Promise<void> {
+): Promise<number> {
   const range = encodeURIComponent('A:F');
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED`;
 
@@ -206,4 +208,141 @@ export async function appendTransactionToSpreadsheet(
     const errText = await response.text();
     throw new Error(`Erreur ajout opération Google Sheet (${response.status}): ${errText}`);
   }
+
+  try {
+    const result = await response.json();
+    const updatedRange = result?.updates?.updatedRange || '';
+    const match = updatedRange.match(/A(\d+):/i);
+    return match ? parseInt(match[1], 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Update an existing transaction in the Google Sheet (range 'A{row}:F{row}')
+ */
+export async function updateTransactionInSpreadsheet(
+  accessToken: string,
+  spreadsheetId: string,
+  tx: Transaction,
+  sheetRow?: number
+): Promise<{ success: boolean; updatedRow: number }> {
+  let targetRow = sheetRow || tx.sheetRow;
+
+  // If we don't know the row index, look it up in the sheet
+  if (!targetRow) {
+    const range = encodeURIComponent('A:F');
+    const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
+    const getRes = await fetch(getUrl, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (getRes.ok) {
+      const data = await getRes.json();
+      const rows: any[][] = data.values || [];
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+        const rowTimestamp = String(row[0] || '').trim();
+        const rowDate = String(row[1] || '').trim();
+        const rowDesc = String(row[3] || '').trim();
+
+        if (tx.timestamp && rowTimestamp === tx.timestamp) {
+          targetRow = i + 1;
+          break;
+        } else if (rowDate === tx.date && rowDesc === tx.description) {
+          targetRow = i + 1;
+          break;
+        }
+      }
+    }
+  }
+
+  // If still not found in the sheet, append it
+  if (!targetRow) {
+    const appendedRow = await appendTransactionToSpreadsheet(accessToken, spreadsheetId, tx);
+    return { success: true, updatedRow: appendedRow };
+  }
+
+  const range = encodeURIComponent(`A${targetRow}:F${targetRow}`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=USER_ENTERED`;
+
+  const body = {
+    values: [
+      [
+        tx.timestamp || new Date().toISOString(),
+        tx.date,
+        tx.compte,
+        tx.description,
+        tx.categorie,
+        tx.montant,
+      ],
+    ],
+  };
+
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Erreur modification Google Sheet (${response.status}): ${errText}`);
+  }
+
+  return { success: true, updatedRow: targetRow };
+}
+
+/**
+ * Delete / clear an existing transaction from the Google Sheet
+ */
+export async function deleteTransactionFromSpreadsheet(
+  accessToken: string,
+  spreadsheetId: string,
+  tx: Transaction,
+  sheetRow?: number
+): Promise<boolean> {
+  let targetRow = sheetRow || tx.sheetRow;
+
+  if (!targetRow) {
+    const range = encodeURIComponent('A:F');
+    const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
+    const getRes = await fetch(getUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (getRes.ok) {
+      const data = await getRes.json();
+      const rows: any[][] = data.values || [];
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row) continue;
+        if (tx.timestamp && String(row[0] || '').trim() === tx.timestamp) {
+          targetRow = i + 1;
+          break;
+        }
+      }
+    }
+  }
+
+  if (!targetRow) return false;
+
+  const clearRange = encodeURIComponent(`A${targetRow}:F${targetRow}`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${clearRange}:clear`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  });
+
+  return response.ok;
 }

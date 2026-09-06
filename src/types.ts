@@ -6,6 +6,7 @@ export interface Transaction {
   description: string;
   categorie: string;
   montant: number;   // Negative for expenses (e.g. -45.50), positive for income (+2400)
+  sheetRow?: number; // Optional 1-based index in the Google Sheet (row 2, 3, etc.)
 }
 
 export interface SyncSettings {

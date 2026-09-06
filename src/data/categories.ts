@@ -5,6 +5,7 @@ export interface CategoryConfig {
   badgeText: string;
   iconName: string;
   type: 'expense' | 'income' | 'both';
+  isCustom?: boolean;
 }
 
 export const DEFAULT_CATEGORIES: CategoryConfig[] = [
@@ -20,6 +21,42 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
   { name: 'Factures & Charges', color: '#64748b', badgeBg: 'bg-slate-50 text-slate-700 border-slate-200', badgeText: 'text-slate-700', iconName: 'Receipt', type: 'expense' },
   { name: 'Autre', color: '#94a3b8', badgeBg: 'bg-gray-50 text-gray-700 border-gray-200', badgeText: 'text-gray-700', iconName: 'Tag', type: 'both' },
 ];
+
+export const PRESET_COLORS = [
+  '#10b981', // Emerald
+  '#059669', // Green
+  '#06b6d4', // Cyan
+  '#0284c7', // Sky
+  '#3b82f6', // Blue
+  '#6366f1', // Indigo
+  '#8b5cf6', // Purple
+  '#d946ef', // Fuchsia
+  '#ec4899', // Pink
+  '#f43f5e', // Rose
+  '#ef4444', // Red
+  '#f97316', // Orange
+  '#f59e0b', // Amber
+  '#84cc16', // Lime
+  '#14b8a6', // Teal
+  '#64748b', // Slate
+];
+
+export function buildCustomCategoryConfig(
+  name: string,
+  color: string,
+  type: 'expense' | 'income' | 'both' = 'expense',
+  iconName: string = 'Tag'
+): CategoryConfig {
+  return {
+    name: name.trim(),
+    color: color || '#10b981',
+    badgeBg: 'bg-slate-50 text-slate-700 border-slate-200',
+    badgeText: 'text-slate-700',
+    iconName,
+    type,
+    isCustom: true,
+  };
+}
 
 export const DEFAULT_ACCOUNTS = [
   'Compte Courant',
